@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Interview Prep Platform</title>
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #34d399 0%, #3b82f6 100%);
+        }
+        
+        .animate-pulse-slow {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .slide-in {
+            animation: slideIn 0.5s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <span class="text-2xl font-bold text-emerald-600">AI Interview Pro</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-4">
+                    <button id="loginBtn" class="px-4 py-2 text-gray-600 hover:text-gray-900">Login</button>
+                    <button id="registerBtn" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Register</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div id="mainContent" class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Auth Forms -->
+        <div id="authForms" class="hidden">
+            <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
+                <div id="loginForm" class="space-y-4">
+                    <h2 class="text-2xl font-bold text-center">Login</h2>
+                    <input type="email" placeholder="Email" class="w-full p-2 border rounded">
+                    <input type="password" placeholder="Password" class="w-full p-2 border rounded">
+                    <button class="w-full py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700">Login</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dashboard" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Interview Practice Card -->
+            <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
+                <h3 class="text-xl font-semibold mb-4">Start Interview Practice</h3>
+                <select id="domainSelect" class="w-full p-2 border rounded mb-4">
+                    <option value="">Select Domain</option>
+                    <option value="frontend">Frontend Development</option>
+                    <option value="backend">Backend Development</option>
+                    <option value="ml">Machine Learning</option>
+                </select>
+                <button id="startInterviewBtn" class="w-full py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700">
+                    Start Practice
+                </button>
+            </div>
+
+            <!-- Performance Analytics -->
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h3 class="text-xl font-semibold mb-4">Performance Analytics</h3>
+                <canvas id="performanceChart"></canvas>
+            </div>
+
+            <!-- Resume Checker -->
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h3 class="text-xl font-semibold mb-4">Resume Checker</h3>
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <i class="bi bi-cloud-upload text-4xl text-gray-400"></i>
+                    <p class="mt-2">Drop your resume here or</p>
+                    <input type="file" id="resumeUpload" class="hidden" accept=".pdf,.doc,.docx">
+                    <button onclick="document.getElementById('resumeUpload').click()" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                        Browse Files
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interview Interface -->
+        <div id="interviewInterface" class="hidden max-w-2xl mx-auto mt-8">
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div id="questionContainer" class="mb-6">
+                    <h3 class="text-xl font-semibold mb-2">Question:</h3>
+                    <p id="currentQuestion" class="text-gray-700"></p>
+                </div>
+                <div class="space-y-4">
+                    <textarea id="answerText" rows="4" class="w-full p-2 border rounded" placeholder="Type your answer here..."></textarea>
+                    <div class="flex space-x-4">
+                        <button id="startRecording" class="flex items-center px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                            <i class="bi bi-mic-fill mr-2"></i> Record Answer
+                        </button>
+                        <button id="submitAnswer" class="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700">
+                            Submit Answer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulated JWT token management
+        let authToken = null;
+
+        // Login functionality
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            document.getElementById('authForms').classList.remove('hidden');
+            document.getElementById('dashboard').classList.add('hidden');
+        });
+
+        // Performance Chart
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                datasets: [{
+                    label: 'Interview Performance',
+                    data: [65, 75, 82, 88],
+                    borderColor: '#059669',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+
+        // Interview functionality
+        const questions = {
+            frontend: [
+                "Explain the difference between let, const, and var in JavaScript.",
+                "What is the Virtual DOM in React?",
+                "Explain CSS Box Model."
+            ],
+            backend: [
+                "What is REST API?",
+                "Explain database normalization.",
+                "What is middleware in Express.js?"
+            ],
+            ml: [
+                "Explain overfitting and underfitting.",
+                "What is gradient descent?",
+                "Explain the difference between supervised and unsupervised learning."
+            ]
+        };
+
+        let currentQuestionIndex = 0;
+        let selectedDomain = '';
+
+        document.getElementById('startInterviewBtn').addEventListener('click', () => {
+            selectedDomain = document.getElementById('domainSelect').value;
+            if (selectedDomain) {
+                document.getElementById('dashboard').classList.add('hidden');
+                document.getElementById('interviewInterface').classList.remove('hidden');
+                showQuestion();
+            }
+        });
+
+        function showQuestion() {
+            const questionEl = document.getElementById('currentQuestion');
+            questionEl.textContent = questions[selectedDomain][currentQuestionIndex];
+        }
+
+        // Voice recording functionality
+        let mediaRecorder;
+        let audioChunks = [];
+
+        document.getElementById('startRecording').addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks);
+                    // Here you would typically send the audioBlob to your backend
+                    audioChunks = [];
+                };
+
+                mediaRecorder.start();
+                setTimeout(() => mediaRecorder.stop(), 10000); // Stop after 10 seconds
+            } catch (err) {
+                console.error('Error accessing microphone:', err);
+            }
+        });
+
+        // Answer submission
+        document.getElementById('submitAnswer').addEventListener('click', () => {
+            const answer = document.getElementById('answerText').value;
+            // Here you would typically send the answer to your backend for NLP analysis
+            
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questions[selectedDomain].length) {
+                showQuestion();
+                document.getElementById('answerText').value = '';
+            } else {
+                alert('Interview completed! Check your performance in the dashboard.');
+                document.getElementById('interviewInterface').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                currentQuestionIndex = 0;
+            }
+        });
+
+        // Resume upload handling
+        document.getElementById('resumeUpload').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                // Here you would typically send the file to your backend for analysis
+                alert('Resume uploaded successfully! Analysis in progress...');
+            }
+        });
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
